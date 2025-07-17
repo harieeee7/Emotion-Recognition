@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Speech Emotion Recognition</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 15px;
+      color: #222;
+      text-align: center;
+      background: #f5f7fa;
+    }
+    h1 {
+      margin-bottom: 5px;
+    }
+    .upload-container {
+      border: 2px dashed #8aa;
+      background: #e9f0f7;
+      padding: 25px;
+      border-radius: 12px;
+      margin: 30px 0 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    .upload-container input[type="file"] {
+      display: none;
+    }
+    label[for="audio-file"] {
+      background-color: #4caf50;
+      color: white;
+      padding: 12px 25px;
+      font-weight: 600;
+      border-radius: 30px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    label[for="audio-file"]:hover {
+      background-color: #45a049;
+    }
+    #file-name {
+      flex-grow: 1;
+      font-style: italic;
+      color: #555;
+    }
+    button {
+      background-color: #1f78d1;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 18px;
+      box-shadow: 0 3px 6px rgba(31, 120, 209, 0.4);
+      transition: background-color 0.3s ease;
+    }
+    button:disabled {
+      background-color: #90b7e0;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    button:hover:not(:disabled) {
+      background-color: #1661a5;
+    }
+    #audio-player {
+      width: 100%;
+      margin-top: 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+    #result {
+      margin-top: 30px;
+      background-color: #fff;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 6px 20px -8px rgba(0,0,0,0.2);
+      display: none;
+      transition: opacity 0.4s ease;
+    }
+    #result.show {
+      display: block;
+      opacity: 1;
+    }
+    #result h2 {
+      font-size: 24px;
+      margin-bottom: 7px;
+      color: #1f78d1;
+    }
+    #result p {
+      font-size: 18px;
+      color: #444;
+      margin-bottom: 20px;
+    }
+    #error-message {
+      color: #d33;
+      margin-top: 20px;
+      font-weight: 600;
+    }
+    #chart-container {
+      max-width: 620px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Speech Emotion Recognition</h1>
+  <p>Upload a WAV audio file to analyze its emotional content</p>
+
+  <div class="upload-container">
+    <input id="audio-file" type="file" accept=".wav" />
+    <label for="audio-file">Choose Audio File</label>
+    <span id="file-name">No file chosen</span>
+    <button id="analyze-btn" disabled>Analyze Emotion</button>
+  </div>
+
+  <audio id="audio-player" controls></audio>
+  <div id="error-message"></div>
+
+  <div id="result">
+    <h2>Detected Emotion: <span id="emotion-result"></span></h2>
+    <p>Confidence: <span id="confidence-result"></span></p>
+    <div id="chart-container">
+      <canvas id="confidence-chart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const audioFileInput = document.getElementById('audio-file');
+    const audioPlayer = document.getElementById('audio-player');
+    const resultDiv = document.getElementById('result');
+    const emotionResult = document.getElementById('emotion-result');
+    const confidenceResult = document.getElementById('confidence-result');
+    const fileNameSpan = document.getElementById('file-name');
+    const errorMessage = document.getElementById('error-message');
+    let emotionChart = null;
+
+    audioFileInput.addEventListener('change', () => {
+      const file = audioFileInput.files[0];
+      if (file) {
+        fileNameSpan.textContent = file.name;
+        audioPlayer.src = URL.createObjectURL(file);
+        resultDiv.classList.remove('show');
+        errorMessage.textContent = '';
+        analyzeBtn.disabled = false;
+      } else {
+        fileNameSpan.textContent = 'No file chosen';
+        audioPlayer.removeAttribute('src');
+        analyzeBtn.disabled = true;
+        resultDiv.classList.remove('show');
+        errorMessage.textContent = '';
+      }
+    });
+
+    analyzeBtn.addEventListener('click', async () => {
+      const file = audioFileInput.files[0];
+      if (!file) {
+        errorMessage.textContent = 'Please select an audio file first.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('audio', file);
+
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = 'Analyzing...';
+      errorMessage.textContent = '';
+      resultDiv.classList.remove('show');
+
+      try {
+        const response = await fetch('/analyze', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          errorMessage.textContent = errorData.error || 'Unknown error occurred.';
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          errorMessage.textContent = data.error;
+          return;
+        }
+
+        emotionResult.textContent = data.result.emotion;
+        confidenceResult.textContent = (data.result.confidence * 100).toFixed(1) + '%';
+
+        const ctx = document.getElementById('confidence-chart').getContext('2d');
+        const all_predictions = data.result.all_predictions || { [data.result.emotion]: data.result.confidence };
+
+        const emotions = Object.keys(all_predictions);
+        const confidences = Object.values(all_predictions);
+
+        if (emotionChart) {
+          emotionChart.data.labels = emotions;
+          emotionChart.data.datasets[0].data = confidences;
+          emotionChart.update();
+        } else {
+          emotionChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: emotions,
+              datasets: [{
+                label: 'Confidence',
+                data: confidences,
+                backgroundColor: 'rgba(31, 120, 209, 0.7)',
+                borderColor: 'rgba(31, 120, 209, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 1,
+                  title: { display: true, text: 'Confidence' }
+                }
+              },
+              plugins: {
+                legend: { display: false }
+              },
+              responsive: true,
+              animation: { duration: 600 }
+            }
+          });
+        }
+
+        resultDiv.classList.add('show');
+
+      } catch (err) {
+        console.error('Error:', err);
+        errorMessage.textContent = 'An error occurred during analysis. Please try again.';
+      } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Analyze Emotion';
+      }
+    });
+  </script>
+</body>
+</html>

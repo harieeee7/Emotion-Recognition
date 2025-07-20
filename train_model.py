@@ -11,9 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
-# -----------------
-# CONFIGURATION
-# -----------------
+
 SAMPLE_RATE = 16000
 N_MFCC = 40
 MAX_PAD_LENGTH = 150
@@ -27,15 +25,11 @@ MODEL_PATH = os.path.join(MODEL_DIR, 'audio_model.pth')
 LABEL_ENCODER_PATH = os.path.join(MODEL_DIR, 'label_encoder.pkl')
 AUDIO_DIR = 'sorted_audio/audio_files'  # Update to your dataset root folder
 
-# -----------------
-# SETUP LOGGER
-# -----------------
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
-# -----------------
-# MODEL DEFINITION
-# -----------------
+
 class AudioClassifier(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):
         super(AudioClassifier, self).__init__()
@@ -53,9 +47,7 @@ class AudioClassifier(nn.Module):
         x = self.fc2(x)
         return x
 
-# -----------------
-# AUDIO PREPROCESSING
-# -----------------
+
 def normalize_mfcc(mfcc):
     mean = np.mean(mfcc, axis=0)
     std = np.std(mfcc, axis=0) + 1e-9
@@ -121,9 +113,7 @@ def pad_features(features, max_len=MAX_PAD_LENGTH):
             padded.append(padded_mfcc)
     return np.array(padded)
 
-# -----------------
-# TRAINING FUNCTION
-# -----------------
+
 def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f'Using device: {device}')

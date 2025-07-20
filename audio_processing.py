@@ -11,23 +11,22 @@ N_MFCC = 13
 MAX_PAD_LENGTH = 0  # Will compute per inference based on trained max length
 
 class AudioClassifier(nn.Module):
-    def __init__(self, input_size, hidden_size, num_classes):
+    def __init__(self, input_size=40, hidden_size=128, num_classes=8):
         super(AudioClassifier, self).__init__()
-        self.lstm1 = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=True)
-        self.lstm2 = nn.LSTM(hidden_size*2, hidden_size//2, batch_first=True)
-        self.fc1 = nn.Linear(hidden_size//2, 32)
-        self.fc2 = nn.Linear(32, num_classes)
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=True)
+        self.fc1 = nn.Linear(hidden_size * 2, 64)
         self.dropout = nn.Dropout(0.3)
         self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(64, num_classes)
 
     def forward(self, x):
-        x, _ = self.lstm1(x)
-        x, _ = self.lstm2(x)
-        x = x[:, -1, :]  # Last time step
+        x, _ = self.lstm(x)
+        x = x[:, -1, :]  # last hidden state
         x = self.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
         return x
+
 
 
 class AudioProcessor:

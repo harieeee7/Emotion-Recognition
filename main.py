@@ -68,7 +68,7 @@ def preprocess_audio_file(audio_bytes):
 
 # STREAMLIT UI
 st.set_page_config(page_title="Audio Emotion Classifier", layout="centered")
-st.title("🗣️ Audio Emotion Recognition")
+st.title("Speech Emotion Recognition")
 st.write("Upload a `.wav` audio file (at least 1 second long) to predict the emotion.")
 
 uploaded_file = st.file_uploader("Upload your WAV audio file", type=["wav"])
@@ -89,10 +89,10 @@ if uploaded_file is not None:
                 emotion = label_encoder.inverse_transform([pred_idx])[0]
                 confidence = float(probs[pred_idx])
 
-                st.success(f"🎉 Predicted Emotion: **{emotion}** with {confidence * 100:.2f}% confidence")
+                st.success(f"Predicted Emotion: **{emotion}** with {confidence * 100:.2f}% confidence")
 
-                st.subheader("📊 Prediction Probabilities")
+                st.subheader("Prediction Probabilities")
                 st.bar_chart({label: probs[i] for i, label in enumerate(label_encoder.classes_)})
 
         except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
+            st.error(f"Error: {str(e)}")

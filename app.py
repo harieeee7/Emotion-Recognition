@@ -4,6 +4,7 @@ import numpy as np
 import librosa
 from io import BytesIO
 import pickle
+import os
 
 # Config
 MODEL_PATH = 'models/audio_model.pth'
@@ -18,7 +19,7 @@ with open(ENCODER_PATH, 'rb') as f:
     label_encoder = pickle.load(f)
 num_classes = len(label_encoder.classes_)
 
-# Load model
+# Define model
 class AudioClassifier(torch.nn.Module):
     def __init__(self, input_size=40, hidden_size=128, num_classes=8):
         super().__init__()
@@ -35,6 +36,7 @@ class AudioClassifier(torch.nn.Module):
         x = self.fc2(x)
         return x
 
+# Load model
 model = AudioClassifier(N_MFCC, 128, num_classes)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
 model.to(DEVICE)
@@ -67,14 +69,14 @@ if uploaded_file:
 
     if st.button("Predict Emotion"):
         try:
-            input_tensor = preprocess(BytesIO(uploaded_file.getvalue()))
+            input_tensor = preprocess(BytesIO(uploaded_file.read()))
             with torch.no_grad():
                 out = model(input_tensor)
                 prob = torch.softmax(out, dim=1).cpu().numpy()[0]
                 pred_idx = int(np.argmax(prob))
                 emotion = label_encoder.inverse_transform([pred_idx])[0]
 
-            st.success(f"Predicted emotion: **{emotion}** ({prob[pred_idx]*100:.2f}%)")
+            st.success(f"Predicted Emotion: **{emotion}** ({prob[pred_idx]*100:.2f}%)")
             st.bar_chart({label_encoder.classes_[i]: float(prob[i]) for i in range(len(prob))})
 
         except Exception as e:

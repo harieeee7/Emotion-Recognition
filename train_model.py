@@ -11,7 +11,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
-
 SAMPLE_RATE = 16000
 N_MFCC = 40
 MAX_PAD_LENGTH = 150
@@ -23,12 +22,10 @@ PATIENCE = 8
 MODEL_DIR = 'models'
 MODEL_PATH = os.path.join(MODEL_DIR, 'audio_model.pth')
 LABEL_ENCODER_PATH = os.path.join(MODEL_DIR, 'label_encoder.pkl')
-AUDIO_DIR = 'sorted_audio/audio_files'  # Update to your dataset root folder
-
+AUDIO_DIR = 'sorted_audio/audio_files'
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
-
 
 class AudioClassifier(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):
@@ -47,7 +44,6 @@ class AudioClassifier(nn.Module):
         x = self.fc2(x)
         return x
 
-
 def normalize_mfcc(mfcc):
     mean = np.mean(mfcc, axis=0)
     std = np.std(mfcc, axis=0) + 1e-9
@@ -55,14 +51,8 @@ def normalize_mfcc(mfcc):
 
 def extract_emotion_label(filename):
     emotion_map = {
-        1: 'neutral',
-        2: 'calm',
-        3: 'happy',
-        4: 'sad',
-        5: 'angry',
-        6: 'fearful',
-        7: 'disgust',
-        8: 'surprised'
+        1: 'neutral', 2: 'calm', 3: 'happy', 4: 'sad',
+        5: 'angry', 6: 'fearful', 7: 'disgust', 8: 'surprised'
     }
     parts = filename.split('-')
     try:
@@ -73,8 +63,7 @@ def extract_emotion_label(filename):
         return 'unknown'
 
 def load_audio_files(folder_path):
-    features = []
-    labels = []
+    features, labels = [] ,[]
     logger.info(f"Loading audio files from: {folder_path}")
 
     for root, dirs, files in os.walk(folder_path):
@@ -89,10 +78,10 @@ def load_audio_files(folder_path):
 
                     mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=N_MFCC)
                     mfcc = normalize_mfcc(mfcc.T)
-                    
+
                     label = extract_emotion_label(file)
                     if label == 'unknown':
-                        continue  # skip unknown labels
+                        continue
 
                     features.append(mfcc)
                     labels.append(label)
@@ -113,11 +102,10 @@ def pad_features(features, max_len=MAX_PAD_LENGTH):
             padded.append(padded_mfcc)
     return np.array(padded)
 
-
 def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f'Using device: {device}')
-    
+
     features, labels = load_audio_files(AUDIO_DIR)
     if not features:
         raise ValueError("No valid audio files found! Check your dataset path and contents.")
@@ -130,7 +118,7 @@ def train():
 
     label_encoder = LabelEncoder()
     y = label_encoder.fit_transform(labels)
-    
+
     os.makedirs(MODEL_DIR, exist_ok=True)
     with open(LABEL_ENCODER_PATH, 'wb') as f:
         pickle.dump(label_encoder, f)
@@ -187,7 +175,6 @@ def train():
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             patience_counter = 0
-            # Save the model and check for errors
             try:
                 torch.save(model.state_dict(), MODEL_PATH)
                 logger.info(f"Saved best model with val_acc: {best_val_acc:.4f}")
